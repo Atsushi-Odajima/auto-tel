@@ -129,7 +129,7 @@ supabase functions serve --env-file ./supabase/.env.local
 ## 6. 動作確認チェックリスト
 
 - [ ] Android / PC Chrome: マイクタップ → 「聞き取り中」→ 話す → 自動で「考え中」→「話し中」。
-- [ ] iPhone (Safari/Chrome): マイクタップ → 録音 → もう一度タップで停止 → STT 経由で文字起こし → 応答。
+- [ ] iPhone (Safari/Chrome): マイクタップ → 録音 → **発話後5秒無音で自動送信**（または手動で再タップ停止）→ STT 経由で文字起こし → 応答。
 - [ ] 返答が日本語で読み上げられる（iOS は初回タップでオーディオがアンロックされる）。
 - [ ] 会話ログが画面に履歴表示される。
 
@@ -150,6 +150,7 @@ supabase functions serve --env-file ./supabase/.env.local
 9. **録音 MIME**: `MediaRecorder.isTypeSupported` で選択。iOS は `audio/mp4`、Chrome は `audio/webm`。Blob の MIME から拡張子を決めて STT へ渡す（Whisper は拡張子で形式判定）。
 10. **TTS**: `speechSynthesis` の `ja-JP` 音声で読み上げ。**初回ユーザータップ時に空 utterance を投げて iOS のオーディオをアンロック**。
 11. **波形可視化**: 録音フォールバック時は Web Audio API の AnalyserNode で実測音量を反映。Web Speech 時はマイクストリームを取得しないため、状態ベースの擬似アニメで可視化。
+11b. **無音自動停止(VAD)**: 録音(iOS)経路では、一度発話を検出した後に **5秒(`SILENCE_MS`)** 無音が続くと自動で録音停止→STT送信。手動の再タップ停止も併用可能。しきい値は `useVoiceChat.ts` の `SILENCE_MS` / `SPEECH_RMS_THRESHOLD` で調整可。
 12. **状態管理**: 状態（待機 / 聞き取り中 / 考え中 / 話し中）と全処理フローを `useVoiceChat` カスタムフックに集約。
 13. **アイコン**: アプリアイコン（`public/icon-192.png` / `icon-512.png`）はビルド時に困らないようプレースホルダを `scripts/generate-icons.mjs` で自動生成済み。差し替え自由。
 14. **デプロイ先**: Cloudflare Pages（Root: `voice-ai`、Build: `npm run build`、Output: `dist`）を想定。HTTPS 前提。

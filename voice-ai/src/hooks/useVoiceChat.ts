@@ -14,6 +14,11 @@ export type InputMode = 'webspeech' | 'recorder'
 const GREETING =
   'こんにちは！音声でお話しできる案内役です。下のマイクをタップして話しかけてくださいね。'
 
+// 録音(iOS フォールバック)経路の VAD: この時間だけ無音が続いたら自動停止する。
+const SILENCE_MS = 5000
+// これ以上の音量(RMS)を「発話」とみなす無音判定のしきい値。
+const SPEECH_RMS_THRESHOLD = 0.03
+
 function uid(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
@@ -59,6 +64,11 @@ export function useVoiceChat(): UseVoiceChat {
   const rafRef = useRef<number | null>(null)
   const handledRef = useRef(false) // recorder: 二重処理防止
 
+  // --- VAD(無音自動停止)用 ---
+  const finishRecordingRef = useRef<(() => void) | null>(null)
+  const speechDetectedRef = useRef(false) // 一度でも発話を検出したか
+  const lastSoundAtRef = useRef(0) // 最後に音があった時刻(ms)
+
   useEffect(() => {
     stateRef.current = state
   }, [state])
@@ -75,37 +85,62 @@ export function useVoiceChat(): UseVoiceChat {
     setAudioLevel(0)
   }, [])
 
-  const startLevelMeter = useCallback((stream: MediaStream) => {
-    try {
-      const Ctx =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext
-      if (!Ctx) return
-      const ctx = new Ctx()
-      audioCtxRef.current = ctx
-      const source = ctx.createMediaStreamSource(stream)
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 256
-      source.connect(analyser)
-      const data = new Uint8Array(analyser.frequencyBinCount)
+  const startLevelMeter = useCallback(
+    (stream: MediaStream, vad = false) => {
+      try {
+        const Ctx =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext
+        if (!Ctx) return
+        const ctx = new Ctx()
+        audioCtxRef.current = ctx
+        const source = ctx.createMediaStreamSource(stream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        source.connect(analyser)
+        const data = new Uint8Array(analyser.frequencyBinCount)
 
-      const tick = () => {
-        analyser.getByteTimeDomainData(data)
-        let sum = 0
-        for (let i = 0; i < data.length; i++) {
-          const v = (data[i] - 128) / 128
-          sum += v * v
+        // VAD 初期化（録音経路のみ）
+        speechDetectedRef.current = false
+        lastSoundAtRef.current = Date.now()
+
+        const tick = () => {
+          analyser.getByteTimeDomainData(data)
+          let sum = 0
+          for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128
+            sum += v * v
+          }
+          const rms = Math.sqrt(sum / data.length)
+          setAudioLevel(Math.min(1, rms * 3))
+
+          // --- 無音自動停止(VAD) ---
+          if (vad && stateRef.current === 'listening') {
+            const now = Date.now()
+            if (rms > SPEECH_RMS_THRESHOLD) {
+              speechDetectedRef.current = true
+              lastSoundAtRef.current = now
+            }
+            // 一度発話を検出した後、SILENCE_MS 無音が続いたら自動で停止
+            if (
+              speechDetectedRef.current &&
+              now - lastSoundAtRef.current >= SILENCE_MS
+            ) {
+              finishRecordingRef.current?.()
+              return // この後 stopLevelMeter で rAF は止まる
+            }
+          }
+
+          rafRef.current = requestAnimationFrame(tick)
         }
-        const rms = Math.sqrt(sum / data.length)
-        setAudioLevel(Math.min(1, rms * 3))
         rafRef.current = requestAnimationFrame(tick)
+      } catch {
+        // 可視化は失敗しても致命的でない
       }
-      rafRef.current = requestAnimationFrame(tick)
-    } catch {
-      // 可視化は失敗しても致命的でない
-    }
-  }, [])
+    },
+    [],
+  )
 
   // --- 会話処理: ユーザー発話テキスト -> Claude -> TTS ---
   const processUserText = useCallback(
@@ -185,6 +220,11 @@ export function useVoiceChat(): UseVoiceChat {
     }
   }, [processUserText, stopLevelMeter])
 
+  // VAD(無音検知)から最新の finishRecording を呼べるよう ref に保持
+  useEffect(() => {
+    finishRecordingRef.current = () => void finishRecording()
+  }, [finishRecording])
+
   // --- 聞き取り開始 ---
   const startListening = useCallback(async () => {
     setError(null)
@@ -223,7 +263,7 @@ export function useVoiceChat(): UseVoiceChat {
         handledRef.current = false
         const handle = await startRecording()
         recorderRef.current = handle
-        startLevelMeter(handle.stream)
+        startLevelMeter(handle.stream, true) // VAD 有効
         setState('listening')
       } catch (e) {
         setError(
