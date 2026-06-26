@@ -59,7 +59,7 @@ export default function App() {
           入力方式:{' '}
           {inputMode === 'webspeech'
             ? 'ブラウザ音声認識 (Web Speech API)'
-            : '録音 + サーバー文字起こし (iOS対応・5秒無音で自動送信)'}
+            : '録音 + サーバー文字起こし (iOS対応・1.5秒無音で自動送信)'}
         </p>
       </section>
     </div>
