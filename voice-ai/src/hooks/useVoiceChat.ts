@@ -15,7 +15,7 @@ const GREETING =
   'こんにちは！音声でお話しできる案内役です。下のマイクをタップして話しかけてくださいね。'
 
 // 録音(iOS フォールバック)経路の VAD: この時間だけ無音が続いたら自動停止する。
-const SILENCE_MS = 5000
+const SILENCE_MS = 1500
 // これ以上の音量(RMS)を「発話」とみなす無音判定のしきい値。
 const SPEECH_RMS_THRESHOLD = 0.03
 
