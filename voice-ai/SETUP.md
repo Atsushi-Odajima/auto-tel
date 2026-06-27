@@ -152,7 +152,11 @@ supabase functions serve --env-file ./supabase/.env.local
 11. **波形可視化**: 録音フォールバック時は Web Audio API の AnalyserNode で実測音量を反映。Web Speech 時はマイクストリームを取得しないため、状態ベースの擬似アニメで可視化。
 11b. **無音自動停止(VAD)**: 録音(iOS)経路では、一度発話を検出した後に **1.5秒(`SILENCE_MS`)** 無音が続くと自動で録音停止→STT送信（＝返答が始まるまでの間）。手動の再タップ停止も併用可能。しきい値は `useVoiceChat.ts` の `SILENCE_MS` / `SPEECH_RMS_THRESHOLD` で調整可。
 12. **状態管理**: 状態（待機 / 聞き取り中 / 考え中 / 話し中）と全処理フローを `useVoiceChat` カスタムフックに集約。
-13. **アイコン**: アプリアイコン（`public/icon-192.png` / `icon-512.png`）はビルド時に困らないようプレースホルダを `scripts/generate-icons.mjs` で自動生成済み。差し替え自由。
+13. **アイコン**: シンプルなマイク＋グラデーション（紫→シアン）のアプリアイコンを作成済み。マスターは `public/icon.svg`（フルブリード）と `public/icon-maskable.svg`（Android セーフゾーン用の余白付き）。`scripts/generate-icons.mjs`（sharp 使用）で各サイズの PNG を生成し、生成物はコミット済み:
+    - iPhone/iPad: `apple-touch-icon.png`(180)
+    - Android/PWA: `icon-192.png` / `icon-512.png`（any）, `icon-maskable-512.png`（maskable）
+    - デスクトップ(タブ): `icon.svg` / `favicon-32.png` / `favicon-16.png`
+    SVG を変更したら `node scripts/generate-icons.mjs` で再生成。デザイン差し替えは自由。
 14. **デプロイ先**: Cloudflare Pages（Root: `voice-ai`、Build: `npm run build`、Output: `dist`）を想定。HTTPS 前提。
 15. **ビルド**: `npm install` 済み、`npm run build`（`tsc -b && vite build`）がエラーなく通ることを確認済み。
 

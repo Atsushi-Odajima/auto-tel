@@ -1,95 +1,37 @@
-// Generates simple solid-gradient PNG app icons (no external deps).
-// Run: node scripts/generate-icons.mjs
-import { deflateSync } from 'node:zlib'
-import { writeFileSync, mkdirSync } from 'node:fs'
+// Rasterize the master SVG icons into the PNGs needed for
+// iPhone (apple-touch-icon), Android/PWA (maskable + any), and desktop (favicon).
+//
+// Source of truth: public/icon.svg (full-bleed) and public/icon-maskable.svg (padded).
+// The generated PNGs are committed, so the build does not need this at runtime.
+// Re-run only when you change the source SVGs: node scripts/generate-icons.mjs
+import sharp from 'sharp'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const outDir = join(__dirname, '..', 'public')
-mkdirSync(outDir, { recursive: true })
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const pub = join(root, 'public')
 
-function crc32(buf) {
-  let c = ~0
-  for (let i = 0; i < buf.length; i++) {
-    c ^= buf[i]
-    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1))
-  }
-  return ~c >>> 0
+const iconSvg = readFileSync(join(pub, 'icon.svg'))
+const maskableSvg = readFileSync(join(pub, 'icon-maskable.svg'))
+
+// [source svg, output file, size] — covers iPhone / Android / desktop.
+const targets = [
+  [iconSvg, 'icon-192.png', 192], // PWA / Android (any)
+  [iconSvg, 'icon-512.png', 512], // PWA / Android (any), splash
+  [maskableSvg, 'icon-maskable-512.png', 512], // Android adaptive (maskable)
+  [iconSvg, 'apple-touch-icon.png', 180], // iPhone / iPad home screen
+  [iconSvg, 'favicon-32.png', 32], // desktop browser tab
+  [iconSvg, 'favicon-16.png', 16], // desktop browser tab (small)
+]
+
+for (const [svg, name, size] of targets) {
+  const png = await sharp(svg, { density: 384 })
+    .resize(size, size, { fit: 'cover' })
+    .png()
+    .toBuffer()
+  writeFileSync(join(pub, name), png)
+  console.log(`wrote public/${name} (${size}x${size}, ${png.length} bytes)`)
 }
 
-function chunk(type, data) {
-  const len = Buffer.alloc(4)
-  len.writeUInt32BE(data.length, 0)
-  const typeBuf = Buffer.from(type, 'ascii')
-  const crc = Buffer.alloc(4)
-  crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0)
-  return Buffer.concat([len, typeBuf, data, crc])
-}
-
-function makePng(size) {
-  const w = size
-  const h = size
-  // RGBA raw with 1-byte filter per row
-  const raw = Buffer.alloc((w * 4 + 1) * h)
-  let p = 0
-  for (let y = 0; y < h; y++) {
-    raw[p++] = 0 // filter: none
-    for (let x = 0; x < w; x++) {
-      // diagonal gradient between purple (#7c5cff) and cyan (#22d3ee)
-      const t = (x / w + y / h) / 2
-      const r = Math.round(0x7c + (0x22 - 0x7c) * t)
-      const g = Math.round(0x5c + (0xd3 - 0x5c) * t)
-      const b = Math.round(0xff + (0xee - 0xff) * t)
-      // dark rounded background mask
-      const cx = w / 2
-      const cy = h / 2
-      const margin = size * 0.12
-      const inRect =
-        x >= margin && x <= w - margin && y >= margin && y <= h - margin
-      // mic glyph (rough): vertical capsule in center
-      const micW = size * 0.18
-      const isMic =
-        Math.abs(x - cx) < micW / 2 &&
-        y > cy - size * 0.22 &&
-        y < cy + size * 0.1
-      if (!inRect) {
-        raw[p++] = 0x0b
-        raw[p++] = 0x10
-        raw[p++] = 0x20
-        raw[p++] = 0xff
-      } else if (isMic) {
-        raw[p++] = 0xff
-        raw[p++] = 0xff
-        raw[p++] = 0xff
-        raw[p++] = 0xff
-      } else {
-        raw[p++] = r
-        raw[p++] = g
-        raw[p++] = b
-        raw[p++] = 0xff
-      }
-    }
-  }
-  const ihdr = Buffer.alloc(13)
-  ihdr.writeUInt32BE(w, 0)
-  ihdr.writeUInt32BE(h, 4)
-  ihdr[8] = 8 // bit depth
-  ihdr[9] = 6 // color type RGBA
-  ihdr[10] = 0
-  ihdr[11] = 0
-  ihdr[12] = 0
-  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
-  return Buffer.concat([
-    sig,
-    chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0)),
-  ])
-}
-
-for (const size of [192, 512]) {
-  const png = makePng(size)
-  writeFileSync(join(outDir, `icon-${size}.png`), png)
-  console.log(`wrote public/icon-${size}.png (${png.length} bytes)`)
-}
+console.log('icons generated.')
