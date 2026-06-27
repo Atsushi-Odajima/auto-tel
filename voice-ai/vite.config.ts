@@ -8,7 +8,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: [
+        'icon.svg',
+        'apple-touch-icon.png',
+        'favicon-32.png',
+        'favicon-16.png',
+      ],
       manifest: {
         name: '音声対話AI',
         short_name: '音声AI',
@@ -23,14 +28,16 @@ export default defineConfig({
             src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
             src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
           },
           {
-            src: 'icon-512.png',
+            src: 'icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

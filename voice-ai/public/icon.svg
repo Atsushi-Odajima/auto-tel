@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c5cff"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <!-- full-bleed background (iOS/Android apply their own corner mask) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- microphone glyph, centered, simple white -->
+  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <!-- mic body -->
+    <rect x="206" y="120" width="100" height="190" rx="50" fill="#ffffff" stroke="none"/>
+    <!-- holder arc -->
+    <path d="M156 248 a100 100 0 0 0 200 0"/>
+    <!-- stem -->
+    <path d="M256 348 v44"/>
+    <!-- base -->
+    <path d="M196 392 h120"/>
+  </g>
+</svg>
