@@ -1,0 +1,10 @@
+# Supabase ローカル/デプロイ設定（最小構成）
+# project_id は朝のセットアップで `supabase link` 時に紐づきます。
+project_id = "voice-ai"
+
+[functions.chat]
+# 公開アプリのため JWT 検証は無効（anon key で呼ぶ）。
+verify_jwt = false
+
+[functions.stt]
+verify_jwt = false

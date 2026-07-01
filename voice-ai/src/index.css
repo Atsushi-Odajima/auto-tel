@@ -1,0 +1,46 @@
+:root {
+  --bg: #0b1020;
+  --bg-soft: #121a33;
+  --panel: #18203c;
+  --text: #e8ecf8;
+  --muted: #9aa4c8;
+  --accent: #7c5cff;
+  --accent-2: #22d3ee;
+  --user: #2b3a67;
+  --danger: #ff5d73;
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', 'Yu Gothic', sans-serif;
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(
+      1200px 800px at 50% -10%,
+      #1a2347 0%,
+      var(--bg) 55%
+    )
+    fixed;
+  /* iOS のセーフエリア対応 */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
